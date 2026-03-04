@@ -14,31 +14,32 @@ export default async function handler(req, res) {
   }
 
   try {
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `You are a Washington State A/E procurement intelligence system. Return only valid JSON arrays with no markdown, no code fences, and no explanation text outside the array.\n\n${prompt}`
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 4096,
-          }
-        })
-      }
-    );
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
+    
+    const geminiRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `You are a Washington State A/E procurement intelligence system. Return only valid JSON arrays with no markdown, no code fences, and no explanation text outside the array.\n\n${prompt}`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 2048,
+        }
+      })
+    });
 
     const data = await geminiRes.json();
 
     if (!geminiRes.ok) {
-      return res.status(geminiRes.status).json({ 
-        error: data?.error?.message || 'Gemini API error',
-        details: data?.error
+      return res.status(200).json({ 
+        text: '',
+        debug_error: data?.error?.message || 'Unknown error',
+        debug_status: geminiRes.status,
+        debug_full: JSON.stringify(data)
       });
     }
 
@@ -46,6 +47,10 @@ export default async function handler(req, res) {
     return res.status(200).json({ text });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(200).json({ 
+      text: '',
+      debug_error: err.message,
+      debug_full: err.toString()
+    });
   }
 }
