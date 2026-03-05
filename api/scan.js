@@ -15,14 +15,14 @@ export default async function handler(req, res) {
 
   try {
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `You are a Washington State A/E procurement intelligence system. You MUST return ONLY a valid JSON array. No markdown, no code fences, no explanation. Start your response with [ and end with ]. Each item in the array must have these fields: port, title, type, discipline, status, deadline, description, solicitation_number, url, source.\n\n${prompt}`
+              text: `You are a Washington State A/E procurement intelligence system. You MUST return ONLY a valid JSON array. No markdown, no code fences, no explanation. Start your response with [ and end with ]. Each item must have: port, title, type, discipline, status, deadline, description, solicitation_number, url, source.\n\n${prompt}`
             }]
           }],
           generationConfig: {
@@ -42,11 +42,8 @@ export default async function handler(req, res) {
     }
 
     let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    
-    // Strip any markdown fences if present
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    // If response doesn't start with [, try to extract array
+
     if (!text.startsWith('[')) {
       const start = text.indexOf('[');
       const end = text.lastIndexOf(']');
