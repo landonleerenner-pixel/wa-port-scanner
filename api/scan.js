@@ -14,44 +14,52 @@ export default async function handler(req, res) {
   }
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
-    
-    const geminiRes = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `You are a Washington State A/E procurement intelligence system. Return only valid JSON arrays with no markdown, no code fences, and no explanation text outside the array.\n\n${prompt}`
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 2048,
-        }
-      })
-    });
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `You are a Washington State A/E procurement intelligence system. You MUST return ONLY a valid JSON array. No markdown, no code fences, no explanation. Start your response with [ and end with ]. Each item in the array must have these fields: port, title, type, discipline, status, deadline, description, solicitation_number, url, source.\n\n${prompt}`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 2048,
+          }
+        })
+      }
+    );
 
     const data = await geminiRes.json();
 
     if (!geminiRes.ok) {
-      return res.status(200).json({ 
-        text: '',
-        debug_error: data?.error?.message || 'Unknown error',
-        debug_status: geminiRes.status,
-        debug_full: JSON.stringify(data)
+      return res.status(geminiRes.status).json({
+        error: data?.error?.message || 'Gemini API error'
       });
     }
 
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    // Strip any markdown fences if present
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    // If response doesn't start with [, try to extract array
+    if (!text.startsWith('[')) {
+      const start = text.indexOf('[');
+      const end = text.lastIndexOf(']');
+      if (start !== -1 && end !== -1) {
+        text = text.substring(start, end + 1);
+      }
+    }
+
     return res.status(200).json({ text });
 
   } catch (err) {
-    return res.status(200).json({ 
-      text: '',
-      debug_error: err.message,
-      debug_full: err.toString()
-    });
+    return res.status(500).json({ error: err.message });
   }
 }
+
 
